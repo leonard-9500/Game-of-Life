@@ -28,8 +28,8 @@ let audioButtonPressedIsReady = false;
 audioButtonPressed.addEventListener("canplaythrough", function () { audioButtonPressedIsReady = true; });
 
 /* Mouse Input */
-let mouseX = 0;
-let mouseY = 0;
+let mouseX;
+let mouseY;
 let mouseLeftPressed = false,
     mouseRightPressed = false;
 
@@ -42,11 +42,8 @@ document.addEventListener("mouseup", mouseUpHandler, false);
 
 function mouseMoveHandler(e)
 {
-    //console.log("Mouse moved.\n");
     mouseX = e.clientX;
     mouseY = e.clientY;
-
-    console.log("MouseX: " + mouseX + "\n" + "MouseY: " + mouseY + "\n");
 }
 
 function mouseDownHandler(e)
@@ -73,7 +70,8 @@ let wPressed = false,
     dPressed = false,
     jPressed = false,
     kPressed = false,
-    lPressed = false;
+    lPressed = false,
+	enterPressed = false;
 
 let wPressedBefore = false,
     aPressedBefore = false,
@@ -81,7 +79,8 @@ let wPressedBefore = false,
     dPressedBefore = false,
     jPressedBefore = false,
     kPressedBefore = false,
-    lPressedBefore = false;
+    lPressedBefore = false,
+	enterPressedBefore = false;
 
 function keyDownHandler(e)
 {
@@ -93,6 +92,8 @@ function keyDownHandler(e)
     if (e.code == "KeyJ") { jPressed = true; }
     if (e.code == "KeyK") { kPressed = true; }
     if (e.code == "KeyL") { lPressed = true; }
+
+	if (e.code == "Enter") { enterPressed = true; }
 }
 
 function keyUpHandler(e)
@@ -105,9 +106,114 @@ function keyUpHandler(e)
     if (e.code == "KeyJ") { jPressed = false; }
     if (e.code == "KeyK") { kPressed = false; }
     if (e.code == "KeyL") { lPressed = false; }
+
+	if (e.code == "Enter") { enterPressed = false; }
 }
 
 /* Class Definitions */
+class LifeScreen
+{
+	constructor()
+	{
+		this.x = 0;
+		this.y = 0;
+		this.width = 40;
+		this.height = 40;
+		this.cellScale = 16;
+		this.cell = [(this.width/4) * (this.height/4)];
+		this.cell.fill(0);
+		this.cellPrev = [(this.width/4) * (this.height/4)];
+		this.cellPrev.fill(0);
+		this.advanceInterval = 500;
+		this.advanceTick = Date.now();
+		this.allowInput = true;
+		this.simIsRunning = false;
+		this.button = [];
+	}
+
+	update()
+	{
+		this.handleInput();
+		this.advanceState();
+		this.draw();
+	}
+
+	addButton(text, x, y)
+	{
+	}
+
+	handleInput()
+	{
+		if (mouseLeftPressed)
+		{
+			let localMouseX = (mouseX-this.x) / this.cellScale;
+			let localMouseY = (mouseY-this.y) / this.cellScale;
+			this.cell[localMouseX + localMouseY * this.width] = 1;
+			//this.cell[mouseX + mouseY * this.width] = 1;
+		}
+	}
+
+	advanceState()
+	{
+		if (tp1 - this.advanceTick >= this.advanceInterval)
+		{
+			this.cellPrev = this.cell;
+
+			for (let y = 0; y < this.height; y++)
+			{
+				for (let x = 0; x < this.width; x++)
+				{
+					// Calculate number of neighbors
+					let n = 0;
+					for (let cY = 0; cY < 3; cY++)
+					{
+						for (let cX = 0; cX < 3; cX++)
+						{
+							if (this.cell[(x+cX-1) + ((y+cY-1)*this.width)] == 1)
+							{
+								n += 1;
+							}
+						}
+					}
+
+					// If cell is active.
+					if (this.cellPrev[x + y * this.width] == 1)
+					{
+						// Cell deactivates
+						if (n < 2) {this.cell[x + y * this.width] = 0;};
+						// Cell stays active
+						//if (n == 2 || n == 3) {this.cellPrev[x + y * this.width] = 0;};
+						// Cell deactivates
+						if (n > 3) {this.cell[x + y * this.width] = 0;};
+					}
+					// If cell is inactive.
+					if (this.cellPrev[x + y * this.width] == 0)
+					{
+						// Cell activates
+						if (n == 3) {this.cell[x + y * this.width] = 0;};
+					}
+				}
+			}
+
+			this.advanceTick = Date.now();
+		}
+	}
+
+	draw()
+	{
+		for (let y = 0; y < this.height; y++)
+		{
+			for (let x = 0; x < this.width; x++)
+			{
+				if (this.cell[x + y * this.width] == 1)
+				{
+					ctx.fillRect(x*this.cellScale, y*this.cellScale, this.cellScale, this.cellScale);
+				}
+			}
+		}
+	}
+}
+
 class Button
 {
 	constructor()
@@ -239,7 +345,15 @@ function getRandomIntInclusive(min, max)
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-let button = new Button;
+
+let lifeScreen = new LifeScreen;
+for (let y = 0; y < lifeScreen.height; y++)
+{
+	for (let x = 0; x < lifeScreen.width; x++)
+	{
+		lifeScreen.cell[x + y * lifeScreen.width] = getRandomIntInclusive(0, 1);
+	}
+}
 
 // Time variables
 let tp1 = Date.now();
@@ -257,6 +371,7 @@ window.main = function ()
     tp1 = tp2;
 
     ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+	lifeScreen.update();
 	button.update();
 }
 
